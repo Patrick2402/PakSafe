@@ -1,0 +1,104 @@
+{
+  "packages": [
+    {
+      "package": "@testing-library/user-event",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "bootstrap",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "react-bootstrap",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "react-copy-to-clipboard",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "web-vitals",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "@mui/icons-material",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "@mui/material",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "@mui/styled-engine",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "styled-components",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "@emotion/react",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "@testing-library/jest-dom",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "react",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "react-scripts",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "socket.io-client",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "@emotion/styled",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "@testing-library/react",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "react-dom",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "react-webcam",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "scrambled",
+      "status": "available",
+      "version": "1.0.0"
+    },
+    {
+      "package": "simple-peer",
+      "status": "available",
+      "version": "1.0.0"
+    }
+  ]
+}
