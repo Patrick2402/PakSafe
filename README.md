@@ -64,13 +64,9 @@ paksafe npm --format json --output-path ./results/scan-results.json
 
 The table output displays the package name, version, and status:
 
-```
-PACKAGE                       VERSION   STATUS      
------------------------------+---------+-------------
-react-scripts                 1.0.0     available   
-react-webcam                  1.0.0     available   
-socket.io-client              1.0.0     vulnerable  
-```
+![Table Output Example](./docs/images/table.png)
+
+Example of table output showing package dependencies and their status
 
 ### JSON Format
 
@@ -117,6 +113,17 @@ The JSON output is structured as follows:
 ### Registry Checking
 
 PakSafe checks each dependency against the NPM registry to determine if it exists and is safe to use. It performs HTTP requests to the registry API and analyzes the responses.
+
+## Sample Outputs
+
+### Table Output
+
+![Table Output Example](./docs/images/table.png)
+
+The table output shows:
+- Package name: Name of the dependency
+- Version: Current version of the package
+- Status: Available (safe) or Vulnerable
 
 ## Future Plans
 
