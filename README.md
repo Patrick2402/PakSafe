@@ -64,7 +64,7 @@ paksafe npm --format json --output-path ./results/scan-results.json
 
 The table output displays the package name, version, and status:
 
-![Table Output Example](./docs/images/table.png)
+![Table Output Example](./table.png)
 
 Example of table output showing package dependencies and their status
 
@@ -118,7 +118,7 @@ PakSafe checks each dependency against the NPM registry to determine if it exist
 
 ### Table Output
 
-![Table Output Example](./docs/images/table.png)
+![Table Output Example](./table.png)
 
 The table output shows:
 - Package name: Name of the dependency
