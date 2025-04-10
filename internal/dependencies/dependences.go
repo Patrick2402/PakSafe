@@ -11,18 +11,18 @@ func GetDependencies(path string) ([]string, error) {
 
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("błąd odczytu pliku: %v", err)
+		return nil, fmt.Errorf("error reading the file: %v", err)
 	}
 
 	var data map[string]interface{}
 	err = json.Unmarshal(content, &data)
 	if err != nil {
-		return nil, fmt.Errorf("błąd parsowania JSON: %v", err)
+		return nil, fmt.Errorf("error in parsing: %v", err)
 	}
 
 	dependencies, ok := data["dependencies"].(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("nie znaleziono zależności")
+		return nil, fmt.Errorf("no depencencies found in the file")
 	}
 
 	var result []string
