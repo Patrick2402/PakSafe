@@ -1,13 +1,13 @@
 package registry
 
 import (
-    "encoding/json"
-    "fmt"
-    "io"
-    "net/http"
-    "strings"
-    
-    "PakSafe/internal/types"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+
+	"PakSafe/internal/types"
 )
 
 // Check for dependency confusion vulnerabilities
@@ -22,19 +22,20 @@ func CheckForDependencyConfusion(dependencies []types.Dependency, privateRegistr
     // Default scope for testing if none provided
     if privateScope == "" {
         // privateScope = "@your-scope"
-    }
+    } else {
+		fmt.Printf("Using private scope: %s\n", privateScope)
+	}
     
-    fmt.Printf("Using private scope: %s\n", privateScope)
+    
     
     // If no private registry specified, just check public registry
     if privateRegistryURL == "" {
         for _, dep := range dependencies {
             inPublicRegistry, publicVersion := checkPackageInRegistry(dep.Name, publicRegistryURL)
-            
             status := types.DependencyStatus{
                 IsVulnerable: false,
                 Status: "available",
-				Reason: "Package exists only in public registry",
+                Reason: "Package exists only in public registry",
                 PrivateVersion: dep.Version,
                 PublicVersion: publicVersion,
             }
@@ -48,6 +49,8 @@ func CheckForDependencyConfusion(dependencies []types.Dependency, privateRegistr
         }
         return results
     }
+
+    // public registry check -> delete comment later
     
     for _, dep := range dependencies {
         status := types.DependencyStatus{
@@ -63,13 +66,35 @@ func CheckForDependencyConfusion(dependencies []types.Dependency, privateRegistr
         status.PrivateVersion = privateVersion
         status.PublicVersion = publicVersion
         
+        // Check if the package is scoped - starts with @
+        isScoped := isOrganizationScoped(dep.Name)
+        
         // Apply the core logic based on the comments
         if inPrivateRegistry && !inPublicRegistry {
-            // Case 1: In private registry but not in public -> vulnerable
-            status.IsVulnerable = true
-            status.Status = "vulnerable"
-            status.Reason = "Package exists only in private registry (possible name squatting target)"
+            // Case 1: In private registry but not in public
+            if !isScoped {
+                // Private package is not scoped and doesn't exist in public - high risk
+                status.IsVulnerable = true
+                status.Status = "vulnerable"
+                status.Reason = "Unscoped private package doesn't exist in public registry (high risk for dependency confusion)"
+				break
+            } else if belongsToPrivateScope(dep.Name, privateScope) {
+                // Private scoped package with your scope - secure
+                status.Status = "available"
+                status.Reason = "Private scoped package with your scope (secure)"
+            } else {
+                // Private scoped package with someone else's scope - suspicious
+                status.Status = "suspicious"
+                status.Reason = "Private scoped package with external scope - check if legitimate"
+            }
         } else if inPrivateRegistry && inPublicRegistry {
+			// if !isScoped {
+			// 	// Private package is not scoped and exists in public - high risk
+			// 	status.IsVulnerable = true
+			// 	status.Status = "vulnerable"
+			// 	status.Reason = "Unscoped private package exists in public registry (high risk for dependency confusion)"
+		
+			// } 
             // Case 2: In both registries -> suspicious
             status.Status = "suspicious"
             status.Reason = "Package exists in both registries"
@@ -81,18 +106,19 @@ func CheckForDependencyConfusion(dependencies []types.Dependency, privateRegistr
             } else {
                 status.Reason += " (same versions - possible proxy caching)"
             }
+	
         } else if !inPrivateRegistry && inPublicRegistry {
             // Case 3: Not in private registry but in public -> dependency confusion free
             status.Status = "available"
-            status.Reason = "Package exists only in public registry (dependency confusion free)"
+            status.Reason = "Package exists only in public registry (dependency confusion free) Use private registry"
         } else {
             // Not in either registry
             status.Status = "not found"
             status.Reason = "Package not found in either registry"
         }
-        
-        // Special handling for packages with your organization's scope
-        if belongsToPrivateScope(dep.Name, privateScope) {
+
+        // Special handling for packages with your organization's scope in public
+        if belongsToPrivateScope(dep.Name, privateScope) { 
             if !inPrivateRegistry && inPublicRegistry {
                 // Your private-scoped package only exists in public registry
                 status.IsVulnerable = true
@@ -102,6 +128,7 @@ func CheckForDependencyConfusion(dependencies []types.Dependency, privateRegistr
         }
         
         results[dep.Name] = status
+		
     }
     
     return results
@@ -109,6 +136,10 @@ func CheckForDependencyConfusion(dependencies []types.Dependency, privateRegistr
 
 // Check if a package belongs to the private scope
 func belongsToPrivateScope(packageName, privateScope string) bool {
+    if privateScope == "" { // if no private scope is provided, return false
+        return false
+    }
+    // Check if the package name starts with the private scope
     return strings.HasPrefix(packageName, privateScope)
 }
 
@@ -116,6 +147,7 @@ func belongsToPrivateScope(packageName, privateScope string) bool {
 func isOrganizationScoped(packageName string) bool {
     return strings.HasPrefix(packageName, "@")
 }
+
 
 // Check if a package exists in a registry and get its latest version
 func checkPackageInRegistry(packageName, registryURL string) (bool, string) {
