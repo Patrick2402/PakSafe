@@ -1,16 +1,19 @@
 package utils
 
 import (
-	"PakSafe/internal/dependencies"
+	"PakSafe/internal/types"
 	"fmt"
 
 	"github.com/fatih/color"
 )
 
+type Dependency struct {
+	// Define the fields of the Dependency struct
+}
 
-func ListDependencies(dependencies []dependencies.Dependency) {
+func ListDependencies(dependencies []types.Dependency) {
 	color.Cyan("Found dependencies")
-	for _, dependencies := range dependencies {
-		fmt.Println("- ", dependencies)
+	for _, dependency := range dependencies {
+		fmt.Println("- ", dependency)
 	}
 }

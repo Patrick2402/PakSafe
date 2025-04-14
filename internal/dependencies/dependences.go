@@ -1,18 +1,14 @@
 package dependencies
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
+    "encoding/json"
+    "fmt"
+    "os"
+    
+    "PakSafe/internal/types"
 )
 
-// Create a struct to hold dependency information
-type Dependency struct {
-    Name    string
-    Version string
-}
-
-func GetDependencies(path string) ([]Dependency, error) {
+func GetDependencies(path string) ([]types.Dependency, error) {
     content, err := os.ReadFile(path)
     if err != nil {
         return nil, fmt.Errorf("error reading the file: %v", err)
@@ -29,7 +25,7 @@ func GetDependencies(path string) ([]Dependency, error) {
         return nil, fmt.Errorf("no dependencies found in the file")
     }
 
-    var result []Dependency
+    var result []types.Dependency
     for name, versionInterface := range dependencies {
         var version string
         if versionStr, ok := versionInterface.(string); ok {
@@ -38,7 +34,7 @@ func GetDependencies(path string) ([]Dependency, error) {
             version = "unknown"
         }
         
-        result = append(result, Dependency{
+        result = append(result, types.Dependency{
             Name:    name,
             Version: version,
         })
@@ -47,20 +43,27 @@ func GetDependencies(path string) ([]Dependency, error) {
     return result, nil
 }
 
-func BuildJson(dependencies []Dependency, registryStatuses map[string]bool) map[string]interface{} {
+func BuildJson(dependencies []types.Dependency, registryStatuses map[string]types.DependencyStatus) map[string]interface{} {
     result := make(map[string]interface{})
     packages := make([]map[string]interface{}, len(dependencies))
 
     for i, dep := range dependencies {
-        status := "available"
-        if !registryStatuses[dep.Name] {
-            status = "vulnerable"
+        status, exists := registryStatuses[dep.Name]
+        statusText := "unknown"
+        reason := ""
+        
+        if exists {
+            statusText = status.Status
+            reason = status.Reason
         }
 
         packages[i] = map[string]interface{}{
             "package": dep.Name,
-            "version": dep.Version, 
-            "status":  status, 
+            "version": dep.Version,
+            "status": statusText,
+            "reason": reason,
+            "privateVersion": status.PrivateVersion,
+            "publicVersion": status.PublicVersion,
         }
     }
 
@@ -69,15 +72,15 @@ func BuildJson(dependencies []Dependency, registryStatuses map[string]bool) map[
 }
 
 func SaveJsonToFile(data map[string]interface{}, path string) error {
-	jsonData, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return fmt.Errorf("error during formatting JSON: %v", err)
-	}
+    jsonData, err := json.MarshalIndent(data, "", "  ")
+    if err != nil {
+        return fmt.Errorf("error during formatting JSON: %v", err)
+    }
 
-	err = os.WriteFile(path, jsonData, 0644)
-	if err != nil {
-		return fmt.Errorf("cannot save to the file: %v", err)
-	}
+    err = os.WriteFile(path, jsonData, 0644)
+    if err != nil {
+        return fmt.Errorf("cannot save to the file: %v", err)
+    }
 
-	return nil
+    return nil
 }
