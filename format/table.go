@@ -36,7 +36,7 @@ func CreateTableFromPackages(jsonResult map[string]interface{}) {
         publicVersion, _ := pkg["publicVersion"].(string)
 
         statusText := status
-        if status == "available" {
+        if status == "secure" {
             statusText = color.GreenString(status)
         } else if status == "vulnerable" {
             statusText = color.RedString(status)

@@ -11,124 +11,97 @@ import (
 )
 
 // Check for dependency confusion vulnerabilities
-// Logic:
-// - Package in private registry, not in public -> vulnerable
-// - Package in private registry AND in public registry -> suspicious (version issues)
-// - Package not in private registry, exists in public -> dependency confusion free
+// Logic based on comprehensive table of possible scenarios
 func CheckForDependencyConfusion(dependencies []types.Dependency, privateRegistryURL string, privateScope string) map[string]types.DependencyStatus {
     results := make(map[string]types.DependencyStatus)
     publicRegistryURL := "https://registry.npmjs.org"
     
-    // Default scope for testing if none provided
-    if privateScope == "" {
-        // privateScope = "@your-scope"
-    } else {
-		fmt.Printf("Using private scope: %s\n", privateScope)
-	}
-    
-    
-    
-    // If no private registry specified, just check public registry
-    if privateRegistryURL == "" {
-        for _, dep := range dependencies {
-            inPublicRegistry, publicVersion := checkPackageInRegistry(dep.Name, publicRegistryURL)
-            status := types.DependencyStatus{
-                IsVulnerable: false,
-                Status: "available",
-                Reason: "Package exists only in public registry",
-                PrivateVersion: dep.Version,
-                PublicVersion: publicVersion,
-            }
-            
-            if !inPublicRegistry {
-                status.Status = "vulnerable"
-                status.Reason = "Package not found in public registry"
-            }
-            
-            results[dep.Name] = status
-        }
-        return results
+    if privateScope != "" {
+        fmt.Printf("Using private scope: %s\n", privateScope)
     }
-
-    // public registry check -> delete comment later
     
     for _, dep := range dependencies {
         status := types.DependencyStatus{
             PrivateVersion: dep.Version,
         }
         
-        // Check if package exists in private registry
-        inPrivateRegistry, privateVersion := checkPackageInRegistry(dep.Name, privateRegistryURL)
+        // Check if package exists in registries
+        inPrivateRegistry := false
+        inPublicRegistry := false
+        var privateVersion, publicVersion string
         
-        // Check if package exists in public registry
-        inPublicRegistry, publicVersion := checkPackageInRegistry(dep.Name, publicRegistryURL)
-
-        status.PrivateVersion = privateVersion
+        if privateRegistryURL != "" {
+            inPrivateRegistry, privateVersion = checkPackageInRegistry(dep.Name, privateRegistryURL)
+            status.PrivateVersion = privateVersion
+        }
+        
+        inPublicRegistry, publicVersion = checkPackageInRegistry(dep.Name, publicRegistryURL)
         status.PublicVersion = publicVersion
         
-        // Check if the package is scoped - starts with @
+        // Check if the package is scoped and if it belongs to the private scope
         isScoped := isOrganizationScoped(dep.Name)
+        isOwnScope := belongsToPrivateScope(dep.Name, privateScope)
         
-        // Apply the core logic based on the comments
-        if inPrivateRegistry && !inPublicRegistry {
-            // Case 1: In private registry but not in public
-            if !isScoped {
-                // Private package is not scoped and doesn't exist in public - high risk
-                status.IsVulnerable = true
-                status.Status = "vulnerable"
-                status.Reason = "Unscoped private package doesn't exist in public registry (high risk for dependency confusion)"
-				break
-            } else if belongsToPrivateScope(dep.Name, privateScope) {
-                // Private scoped package with your scope - secure
-                status.Status = "available"
-                status.Reason = "Private scoped package with your scope (secure)"
-            } else {
-                // Private scoped package with someone else's scope - suspicious
+        if !isScoped && !isOwnScope {
+            // Rows 11-16: Not scoped and not own scope
+            if inPrivateRegistry && inPublicRegistry {
                 status.Status = "suspicious"
-                status.Reason = "Private scoped package with external scope - check if legitimate"
-            }
-        } else if inPrivateRegistry && inPublicRegistry {
-			// if !isScoped {
-			// 	// Private package is not scoped and exists in public - high risk
-			// 	status.IsVulnerable = true
-			// 	status.Status = "vulnerable"
-			// 	status.Reason = "Unscoped private package exists in public registry (high risk for dependency confusion)"
-		
-			// } 
-            // Case 2: In both registries -> suspicious
-            status.Status = "suspicious"
-            status.Reason = "Package exists in both registries"
-            
-            if compareVersions(publicVersion, privateVersion) > 0 {
-                status.Reason += " (public version is higher - possible version bombing)"
-            } else if compareVersions(publicVersion, privateVersion) < 0 {
-                status.Reason += " (private version is higher)"
-            } else {
-                status.Reason += " (same versions - possible proxy caching)"
-            }
-	
-        } else if !inPrivateRegistry && inPublicRegistry {
-            // Case 3: Not in private registry but in public -> dependency confusion free
-            status.Status = "available"
-            status.Reason = "Package exists only in public registry (dependency confusion free) Use private registry"
-        } else {
-            // Not in either registry
-            status.Status = "not found"
-            status.Reason = "Package not found in either registry"
-        }
-
-        // Special handling for packages with your organization's scope in public
-        if belongsToPrivateScope(dep.Name, privateScope) { 
-            if !inPrivateRegistry && inPublicRegistry {
-                // Your private-scoped package only exists in public registry
-                status.IsVulnerable = true
+                status.Reason = "Unscoped package exists in both registries"
+                if compareVersions(publicVersion, privateVersion) > 0 {
+                    status.Reason += " (public version is higher - possible version bombing)"
+                }
+            } else if inPrivateRegistry && !inPublicRegistry {
                 status.Status = "vulnerable"
-                status.Reason = "Private-scoped package exists in public registry but not in private registry (high risk)"
+                status.Reason = "Unscoped package exists only in private registry (high risk for name squatting)"
+                status.IsVulnerable = true
+            } else if !inPrivateRegistry && inPublicRegistry {
+                status.Status = "secure"
+                status.Reason = "Public package exists only in public registry (normal scenario)"
+            } else if !inPrivateRegistry && !inPublicRegistry {
+                status.Status = "no package"
+                status.Reason = "Package not found in any registry"
             }
+        } else if isScoped && isOwnScope {
+            // Rows 1-4: Scoped and own scope
+            if inPrivateRegistry && inPublicRegistry {
+                status.Status = "secure"
+                status.Reason = "Own-scoped package exists in both registries (likely intentional)"
+            } else if inPrivateRegistry && !inPublicRegistry {
+                status.Status = "secure"
+                status.Reason = "Own-scoped package exists only in private registry (secure scenario)"
+            } else if !inPrivateRegistry && inPublicRegistry {
+                status.Status = "vulnerable"
+                status.Reason = "Own-scoped package exists only in public registry (high risk dependency confusion)"
+                status.IsVulnerable = true
+            } else if !inPrivateRegistry && !inPublicRegistry {
+                status.Status = "not found"
+                status.Reason = "Own-scoped package not found in any registry"
+            }
+        } else if isScoped && !isOwnScope {
+            // Rows 5, 7, 9: Scoped but not own scope
+            if inPrivateRegistry && inPublicRegistry {
+                status.Status = "suspicious"
+                status.Reason = "External-scoped package exists in both registries"
+                if compareVersions(publicVersion, privateVersion) > 0 {
+                    status.Reason += " (public version is higher - check if legitimate)"
+                }
+            } else if inPrivateRegistry && !inPublicRegistry {
+                status.Status = "suspicious"
+                status.Reason = "External-scoped package exists only in private registry (unusual scenario)"
+            } else if !inPrivateRegistry && inPublicRegistry {
+                status.Status = "secure"
+                status.Reason = "External-scoped public package (normal scenario)"
+            } else if !inPrivateRegistry && !inPublicRegistry {
+                status.Status = "not possible"
+                status.Reason = "External-scoped package not found anywhere"
+            }
+        } else if !isScoped && isOwnScope {
+            // Rows 6, 8, 10: Not scoped but marked as own scope (should be impossible)
+            status.Status = "not possible"
+            status.Reason = "Package cannot be unscoped and have an own scope simultaneously"
         }
         
         results[dep.Name] = status
-		
     }
     
     return results
@@ -136,10 +109,9 @@ func CheckForDependencyConfusion(dependencies []types.Dependency, privateRegistr
 
 // Check if a package belongs to the private scope
 func belongsToPrivateScope(packageName, privateScope string) bool {
-    if privateScope == "" { // if no private scope is provided, return false
+    if privateScope == "" { 
         return false
     }
-    // Check if the package name starts with the private scope
     return strings.HasPrefix(packageName, privateScope)
 }
 
@@ -148,9 +120,12 @@ func isOrganizationScoped(packageName string) bool {
     return strings.HasPrefix(packageName, "@")
 }
 
-
 // Check if a package exists in a registry and get its latest version
 func checkPackageInRegistry(packageName, registryURL string) (bool, string) {
+    if registryURL == "" {
+        return false, ""
+    }
+    
     url := fmt.Sprintf("%s/%s", strings.TrimRight(registryURL, "/"), packageName)
     resp, err := http.Get(url)
     if err != nil {
@@ -188,16 +163,11 @@ func extractLatestVersion(resp *http.Response) string {
         }
     }
     
-    // If we can't find the latest version, return an empty string
     return ""
 }
 
 // Compare two semantic versions (simplified)
 func compareVersions(version1, version2 string) int {
-    // This is a simplified version comparison
-    // For a complete solution, use a semantic versioning library
-    
-    // If either version is empty, consider it "lower"
     if version1 == "" {
         return -1
     }
@@ -205,7 +175,6 @@ func compareVersions(version1, version2 string) int {
         return 1
     }
     
-    // For now, just compare strings (inadequate for real semver)
     if version1 > version2 {
         return 1
     } else if version1 < version2 {

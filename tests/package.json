@@ -6,8 +6,8 @@
       "@emotion/react": "^11.10.5",
       "lodash": "^4.17.21 ",
       "@your-scope/example": "^1.0.0",
-      "react222": "^18.2.0",
-      "@your-scope/socket.io": "^4.5.4"
+      "@patatur/lodash": "^1.0.0",
+      "milionviews": "^1.2.3"
     },
     "scripts": {
       "start": "react-scripts start",
